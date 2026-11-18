@@ -1,0 +1,7 @@
+k,strategy,selected_false_negatives,selected_false_positives,selected_ml_errors,selected_botnets,mean_uncertainty
+50,uncertainty,9,0,9,36,0.9101403937766821
+50,random,1,0,1,18,0.6085521957701882
+100,uncertainty,9,0,9,63,0.8913466920998337
+100,random,3,0,3,35,0.633850657098718
+200,uncertainty,9,1,10,63,0.8700570569899562
+200,random,4,0,4,68,0.618052245421453

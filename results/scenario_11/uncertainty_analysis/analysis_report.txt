@@ -1,0 +1,35 @@
+CTU-13 — Scenario 11: Random Forest uncertainty analysis
+===================================================================
+Source: /home/aprix/LOG6309E_Botnet_Detection/results/scenario_11/predictions.csv
+Test flows: 2,292
+True Botnet flows: 786
+False negatives (missed botnets): 24
+False positives (false alarms): 4
+Total errors: 28
+
+Selection: smallest |P(Botnet) - 0.5|, stable ordering for ties.
+Random comparison: MATHEMATICAL EXPECTATION, not observed random reviews.
+No LLM is called; no LLM corrections are estimated.
+
+PROBABILITIES BY TRUE CLASS / PREDICTION OUTCOME
+                group    n    min    p10    p25  median    p75    p90    max
+Normal (true label 0) 1506 0.0087 0.0550 0.0709  0.4030 0.4077 0.4182 0.6119
+Botnet (true label 1)  786 0.0751 0.5923 0.6471  0.6491 0.6875 0.7590 0.8502
+      False negatives   24 0.0751 0.0833 0.1340  0.2543 0.4752 0.4752 0.4752
+      False positives    4 0.5769 0.5807 0.5863  0.5947 0.6030 0.6083 0.6119
+       True positives  762 0.5574 0.6217 0.6471  0.6530 0.6875 0.7590 0.8502
+       True negatives 1502 0.0087 0.0550 0.0707  0.4030 0.4077 0.4182 0.4927
+
+TOP-K ERROR COVERAGE
+K=50: FN=9 (37.50% of all FN), FP=0, total errors=9; random expected FN=0.52, expected total errors=0.61; FN enrichment=17.19x, all-error enrichment=14.73x
+K=100: FN=9 (37.50% of all FN), FP=0, total errors=9; random expected FN=1.05, expected total errors=1.22; FN enrichment=8.60x, all-error enrichment=7.37x
+K=200: FN=9 (37.50% of all FN), FP=1, total errors=10; random expected FN=2.09, expected total errors=2.44; FN enrichment=4.30x, all-error enrichment=4.09x
+
+CONFIDENT FALSE NEGATIVES
+FN with P(Botnet) < 0.10: 3
+FN with P(Botnet) < 0.25: 12
+
+Interpretation:
+- Top-K selection captures model errors, not confirmed LLM-correctable flows.
+- Compare random EXPECTATIONS to observed top-K counts, not to actual LLM results.
+- Never change model, thresholds, or review policy using held-out test labels.
