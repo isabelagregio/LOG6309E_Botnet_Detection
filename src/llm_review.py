@@ -129,7 +129,9 @@ def save_response(
     error: str | None = None,
     backend: str | None = None,
     generation_settings: dict | None = None,
-) -> None:
+    response_metadata: dict | None = None,
+    cache_hit: bool = False,
+) -> dict:
     """Append an actual response and its measurements as a single JSONL record.
 
     Unknown token counts remain null. Invalid responses remain unclassified;
@@ -158,7 +160,10 @@ def save_response(
         "output_tokens": output_tokens,
         "response_time_seconds": response_time_seconds,
         "error": error,
+        "cache_hit": cache_hit,
     }
+    if response_metadata is not None:
+        record["response_metadata"] = response_metadata
     if backend is not None:
         settings = generation_settings if generation_settings is not None else {}
         record.update({
@@ -172,6 +177,7 @@ def save_response(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(record, allow_nan=False) + "\n")
+    return record
 
 
 def main() -> None:
