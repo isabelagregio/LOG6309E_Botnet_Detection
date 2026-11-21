@@ -81,6 +81,56 @@ These results illustrate different generalization conditions. The model performs
 
 **Important:** Never include ground-truth labels in LLM prompts. Keep the trained Random Forest and experimental configuration fixed during Phase 2.
 
+## Phase 2 Preparation — Offline
+
+The preparation code is in `src/llm_review.py`. It uses the Python standard
+library and reads the existing review CSVs without retraining the baseline.
+Run from the repository root:
+
+```bash
+python -m src.llm_review \
+  --prompt src/flow_review_draft.txt \
+  --output results/llm_requests.jsonl \
+  results/scenario_*/review_*_k*.csv
+```
+
+The output path must not already exist. Use a new filename for another run.
+The prompt in `src/flow_review_draft.txt` is a **draft for the validation pilot**.
+The model, final prompt, and rule for combining predictions remain to be
+selected using validation data before the final test experiment.
+
+Prepared requests retain `flow_id`, `scenario`, selection membership
+(`source_files`), and a prompt fingerprint (`prompt_id`) for offline evaluation.
+Only their `messages` field should be sent to the LLM: it contains the
+instruction and the nine flow features, excluding identifiers, ground-truth
+labels, and ML predictions/probabilities. Missing features are JSON `null`.
+Repeated flows share one request while retaining all selection memberships;
+conflicting features for the same flow ID are rejected.
+
+When an inference backend is added, `save_response(...)` records the model,
+prompt fingerprint, raw response, binary prediction, actual input/output token
+counts, elapsed time, and errors in JSONL. Unknown measurements remain `null`.
+The draft response format accepts only `Normal` or `Botnet`, ignoring case and
+surrounding whitespace. Invalid responses remain unclassified. This preparation
+step makes no LLM calls and does not combine predictions.
+
+Cache helpers are available for the future inference runner. Passing `backend`
+and `generation_settings` to `save_response(...)` stores a cache key derived
+from the backend, model, generation settings, and exact messages.
+`load_cached_responses(...)` indexes the first completed response for each key,
+including invalid model replies; connection/provider failures remain logged but
+are not reusable responses. Changing the model, prompt, features, backend, or
+generation settings changes the key. Cache hits must retain the original token
+measurements for each strategy's evaluation, independently of execution order.
+The runner must associate a reused response with the current request's flow ID,
+since identical messages can originate from different flows.
+
+Run the offline checks, which use synthetic fixtures in temporary directories:
+
+```bash
+python -m unittest src.test_llm_review -v
+```
+
 ## Dataset References
 
 - [CTU-13 — Stratosphere Laboratory](https://www.stratosphereips.org/datasets-ctu13)

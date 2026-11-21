@@ -9,4 +9,5 @@ results/*.parquet
 results/*.joblib
 results/*.png
 results/*.json
+results/*.jsonl
 !results/.gitkeep

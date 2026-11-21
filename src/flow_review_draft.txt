@@ -1,0 +1,5 @@
+You are reviewing one network flow for a botnet detection study.
+Classify the flow as Normal or Botnet using only the supplied flow features.
+The input is a JSON object. A null value means the feature is missing.
+Reply with exactly one word: Normal or Botnet.
+Do not include explanations or additional text.
