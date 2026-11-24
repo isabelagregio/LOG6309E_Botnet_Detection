@@ -130,6 +130,46 @@ class GemmaReviewTests(unittest.TestCase):
         self.assertIsNone(saved["prediction"])
         self.assertNotIn("unit-test-secret", self.output.read_text())
 
+    def test_runner_retries_503_and_records_the_recovered_prediction(self):
+        failure = HTTPError("https://example.test", 503, "unavailable", None, None)
+        parsed = self.gemma.parse_response(self.api_response)
+        with (
+            patch("src.gemma_review.call_gemma", side_effect=[failure, parsed]) as call,
+            patch("src.gemma_review.time.sleep") as sleep,
+        ):
+            stats = self.gemma.run_reviews(
+                [self.request], self.output, api_key="unit-test-secret",
+                generation_settings=self.settings, max_new_requests=2,
+            )
+        self.assertEqual(call.call_count, 2)
+        self.assertEqual(stats["new_calls"], 2)
+        self.assertEqual(stats["failed_calls"], 1)
+        self.assertIsNone(stats["stop_reason"])
+        self.assertGreater(sleep.call_args.args[0], 2)
+        first, final = map(json.loads, self.output.read_text().splitlines())
+        self.assertEqual(first["error"], "http_503")
+        self.assertEqual(final["flow_id"], first["flow_id"])
+        self.assertEqual(final["prediction"], 1)
+        self.assertEqual(final["input_tokens"], 70)
+
+    def test_persistent_503_stops_at_the_retry_or_call_limit(self):
+        for budget, expected in ((2, 2), (10, 3)):
+            with self.subTest(budget=budget):
+                output = self.output.with_name(f"budget-{budget}.jsonl")
+                failure = HTTPError("https://example.test", 503, "unavailable", None, None)
+                with (
+                    patch("src.gemma_review.call_gemma", side_effect=failure) as call,
+                    patch("src.gemma_review.time.sleep"),
+                ):
+                    stats = self.gemma.run_reviews(
+                        [self.request], output, api_key="unit-test-secret",
+                        generation_settings=self.settings, max_new_requests=budget,
+                    )
+                self.assertEqual(call.call_count, expected)
+                self.assertEqual(stats["new_calls"], expected)
+                self.assertEqual(stats["stop_reason"], "http_503")
+                self.assertEqual(len(output.read_text().splitlines()), expected)
+
     def test_call_limit_does_not_silently_process_the_rest(self):
         changed = json.loads(json.dumps(self.request))
         changed["flow_id"] = "s03_r2"

@@ -5,6 +5,7 @@ import json
 import math
 import os
 from pathlib import Path
+from random import uniform
 import time
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -17,6 +18,7 @@ MODEL = "gemma-4-31b-it"
 BACKEND = "google-gemini-v1beta"
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
+RETRY_503_DELAYS = (10, 20)
 
 
 def get_api_key(env_file: Path | None = None) -> str:
@@ -108,7 +110,10 @@ def run_reviews(
                         and row.get("error") in (None, "invalid_response")):
                     recorded.add((row["flow_id"], row.get("cache_key")))
     config = {"backend": BACKEND, "model": MODEL, "generation_settings": generation_settings}
-    stats = {"new_calls": 0, "cache_hits": 0, "already_recorded": 0, "failed_calls": 0}
+    stats = {
+        "new_calls": 0, "cache_hits": 0, "already_recorded": 0,
+        "failed_calls": 0, "stop_reason": None,
+    }
     next_call = 0.0
     for request in requests:
         make_payload(request, generation_settings)
@@ -131,33 +136,39 @@ def run_reviews(
             continue
         if stats["new_calls"] >= max_new_requests:
             break
-        time.sleep(max(0.0, next_call - time.monotonic()))
-        started = time.perf_counter()
-        error = None
-        try:
-            result = call_gemma(request, api_key, generation_settings, timeout)
-        except HTTPError as exc:
-            error = f"http_{exc.code}"
-        except (URLError, TimeoutError):
-            error = "network_error"
-        except json.JSONDecodeError:
-            error = "invalid_api_json"
-        elapsed = time.perf_counter() - started
-        next_call = time.monotonic() + 60 / requests_per_minute
-        stats["new_calls"] += 1
-        if error:
-            result = {
-                "response": None, "input_tokens": None, "output_tokens": None,
-                "error": error,
-            }
-        record = save_response(
-            output_path, request, **config, **result, response_time_seconds=elapsed,
-        )
-        if error:
+        for retry_delay in (*RETRY_503_DELAYS, None):
+            time.sleep(max(0.0, next_call - time.monotonic()))
+            started = time.perf_counter()
+            error = None
+            try:
+                result = call_gemma(request, api_key, generation_settings, timeout)
+            except HTTPError as exc:
+                error = f"http_{exc.code}"
+            except (URLError, TimeoutError):
+                error = "network_error"
+            except json.JSONDecodeError:
+                error = "invalid_api_json"
+            elapsed = time.perf_counter() - started
+            next_call = time.monotonic() + 60 / requests_per_minute
+            stats["new_calls"] += 1
+            if error:
+                result = {
+                    "response": None, "input_tokens": None, "output_tokens": None,
+                    "error": error,
+                }
+            record = save_response(
+                output_path, request, **config, **result, response_time_seconds=elapsed,
+            )
+            if error is None:
+                cache[key] = record
+                recorded.add(identity)
+                break
+
             stats["failed_calls"] += 1
-            break
-        cache[key] = record
-        recorded.add(identity)
+            if error != "http_503" or retry_delay is None or stats["new_calls"] >= max_new_requests:
+                stats["stop_reason"] = error
+                return stats
+            next_call = max(next_call, time.monotonic() + retry_delay + uniform(0, 1))
     return stats
 
 
@@ -202,7 +213,7 @@ def main() -> None:
         timeout=args.timeout,
     )
     print(json.dumps(stats, indent=2))
-    if stats["failed_calls"]:
+    if stats["stop_reason"]:
         raise SystemExit(1)
 
 

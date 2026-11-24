@@ -171,11 +171,12 @@ single-call check. The call limit controls one execution batch; it does not
 change the selected experimental samples. Resume with the same output file to
 continue without repeating recorded responses.
 
-The runner uses at most 30 calls per minute by default; use
-`--requests-per-minute` to lower this rate. It stops on HTTP, connection, or
-response-JSON errors, including quota errors, without automatic retries.
-Token-per-minute and daily limits are still enforced by Google. API access and
-actual quotas must be confirmed with a real pilot call.
+The runner uses at most 30 calls per minute by default. Use
+`--requests-per-minute` to lower this rate. After HTTP 503 it can retry the
+same flow twice, waiting about 10 and 20 seconds. Retries count towards
+`--max-new-requests`. If the 503 persists or another API error occurs, the
+runner saves the error and stops. Rerun with the same output file to pick up
+where it stopped. Google enforces token and daily limits.
 
 Records include `cache_hit` and `response_metadata`: the returned model version,
 finish reason, response ID, and raw usage counters. Output token accounting uses
