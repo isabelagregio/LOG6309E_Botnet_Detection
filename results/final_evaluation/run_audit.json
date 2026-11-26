@@ -1,0 +1,12 @@
+{
+  "project_commit": "28f63b82fa6606619276701a86aad7de8935eda2",
+  "model_versions": [
+    "gemma-4-31b-it"
+  ],
+  "recorded_outcomes": {
+    "http_503": 964,
+    "ok": 797,
+    "network_error": 5
+  },
+  "completed_noncache_calls_including_repeated_payloads": 770
+}

@@ -1,0 +1,7 @@
+{
+  "unique_selected_flows": 779,
+  "recorded_api_calls_for_selected_flows": 753,
+  "actual_input_tokens_recorded": 114199,
+  "actual_output_tokens_recorded": 890,
+  "note": "Logical token usage is summed separately per strategy/K. Actual usage excludes cached copies; calls outside the selected sets are not counted."
+}

@@ -12,4 +12,5 @@ results/*.joblib
 results/*.png
 results/*.json
 results/*.jsonl
+results/reproduced_evaluation/
 !results/.gitkeep
